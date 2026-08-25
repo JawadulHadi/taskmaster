@@ -1,0 +1,29 @@
+{
+  "name": "taskmaster-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Event-driven HR ops agent for the All Things Agentic Hackathon (Taskmaster track).",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "seed": "tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@genkit-ai/google-genai": "^1.41.0",
+    "@google-cloud/firestore": "latest",
+    "@google-cloud/pubsub": "latest",
+    "dotenv": "^16",
+    "express": "^4",
+    "genkit": "latest",
+    "meilisearch": "latest",
+    "zod": "^3"
+  },
+  "devDependencies": {
+    "@types/express": "^4",
+    "@types/node": "^20",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}
