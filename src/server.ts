@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 import {
   createJob,
   updateJobStatus,
@@ -81,6 +82,12 @@ registerLocalWorker(async (jobId: string, tenantId: string) => {
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok", service: "taskmaster-agent" });
+});
+
+// Serve OpenAPI specification
+app.get("/docs/openapi.yaml", (req, res) => {
+  res.setHeader("Content-Type", "text/yaml");
+  res.sendFile(path.resolve(process.cwd(), "docs/openapi.yaml"));
 });
 
 // List all jobs
@@ -388,6 +395,286 @@ app.post("/jobs/:jobId/resume", async (req, res) => {
   }
 });
 
+// ── Branding & Landing Page ──
+app.get("/branding", (req, res) => {
+  res.setHeader("Content-Type", "text/html");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Taskmaster Agent - Autonomous HR & Workflow Orchestration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+  
+  <!-- Navigation Header -->
+  <header class="border-b border-slate-900 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-inner overflow-visible">
+          <svg class="w-7 h-7 transition-transform duration-300 hover:scale-110 cursor-pointer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="50%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#ec4899" />
+              </linearGradient>
+            </defs>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="url(#logoGrad)" stroke-width="3" stroke-dasharray="12 6" opacity="0.8">
+              <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="20s" repeatCount="indefinite" />
+            </circle>
+            <polygon points="60,15 99,37 99,83 60,105 21,83 21,37" fill="#090d16" stroke="url(#logoGrad)" stroke-width="4" />
+            <circle cx="60" cy="35" r="5" fill="#6366f1" />
+            <circle cx="85" cy="75" r="5" fill="#ec4899" />
+            <circle cx="35" cy="75" r="5" fill="#8b5cf6" />
+            <line x1="60" y1="35" x2="85" y2="75" stroke="#8b5cf6" stroke-width="2.5" opacity="0.7" />
+            <line x1="85" y1="75" x2="35" y2="75" stroke="#ec4899" stroke-width="2.5" opacity="0.7" />
+            <line x1="35" y1="75" x2="60" y2="35" stroke="#6366f1" stroke-width="2.5" opacity="0.7" />
+            <circle cx="60" cy="60" r="10" fill="url(#logoGrad)" />
+            <circle cx="60" cy="60" r="4" fill="#ffffff" />
+          </svg>
+        </div>
+        <span class="text-base font-extrabold tracking-tight text-white flex items-center gap-1.5">
+          Taskmaster<span class="text-indigo-400">Live</span>
+        </span>
+      </div>
+
+      <nav class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
+        <a href="#demo" class="hover:text-white transition">Demo</a>
+        <a href="#features" class="hover:text-white transition">Features</a>
+        <a href="#architecture" class="hover:text-white transition">Dashboard Flow</a>
+        <a href="/docs/openapi.yaml" target="_blank" class="hover:text-white transition">OpenAPI Spec</a>
+        <a href="https://github.com" target="_blank" class="hover:text-white transition">GitHub</a>
+      </nav>
+
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/JawadulHadi/taskmaster-agent.git" target="_blank" class="px-3.5 py-1.5 text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded-full flex items-center gap-1.5 transition shadow-sm">
+          <span class="text-amber-400">★</span> Star on GitHub
+        </a>
+        <a href="/" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-full transition shadow-lg shadow-indigo-600/20">
+          Quick Start
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <main class="flex-1">
+    <section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 text-center space-y-8 relative">
+      <div class="absolute inset-0 -z-10 flex items-center justify-center opacity-30 pointer-events-none">
+        <div class="w-[500px] h-[500px] bg-indigo-600/25 rounded-full blur-[120px]"></div>
+        <div class="w-[300px] h-[300px] bg-pink-600/25 rounded-full blur-[100px]"></div>
+      </div>
+
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        Genkit Agentic Workflow &amp; HR Automation
+      </div>
+
+      <h1 class="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-[1.1]">
+        Stop staring at static logs.<br>
+        <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          Start orchestrating AI workflows in real time.
+        </span>
+      </h1>
+
+      <p class="max-w-2xl mx-auto text-base sm:text-lg text-slate-400 leading-relaxed">
+        Watch your Genkit worker tasks execute live. Monitor employee records, policy vector searches, overtime audits, and human-in-the-loop supervisor approvals—100% secure on Cloud Run.
+      </p>
+
+      <div class="flex flex-wrap items-center justify-center gap-4 pt-4">
+        <a href="/" class="px-6 py-3 text-sm font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-xl shadow-indigo-600/30 transition flex items-center gap-2">
+          <span>⚡</span> Launch Control Center
+        </a>
+        <a href="https://github.com/JawadulHadi/taskmaster-agent.git" target="_blank" class="px-6 py-3 text-sm font-semibold bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 rounded-xl transition flex items-center gap-2">
+          <span>★</span> Star on GitHub
+        </a>
+      </div>
+
+      <!-- Git Clone Command Box -->
+      <div class="max-w-xl mx-auto pt-6">
+        <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3 flex items-center justify-between shadow-xl font-mono text-xs text-slate-300">
+          <div class="flex items-center gap-2 overflow-x-auto py-1">
+            <span class="text-indigo-400 select-none">$</span>
+            <span>git clone https://github.com/JawadulHadi/taskmaster-agent.git</span>
+          </div>
+          <button onclick="navigator.clipboard.writeText('git clone https://github.com/JawadulHadi/taskmaster-agent.git'); alert('Copied git clone command to clipboard!');" class="px-3 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] transition shrink-0">
+            Copy
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trusted Agents Marquee / Badges -->
+    <section id="features" class="border-y border-slate-900 bg-slate-950/60 py-12">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+        <h3 class="text-xs font-semibold uppercase tracking-widest text-slate-500">
+          Powered by industry-standard AI &amp; Cloud Infrastructure
+        </h3>
+        <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-8">
+          <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-indigo-300 flex items-center gap-2">
+            <span>✨</span> Google Genkit ADK
+          </div>
+          <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-purple-300 flex items-center gap-2">
+            <span>🧠</span> Gemini 1.5 Flash / Pro
+          </div>
+          <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-pink-300 flex items-center gap-2">
+            <span>🔥</span> Cloud Firestore DB
+          </div>
+          <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-emerald-300 flex items-center gap-2">
+            <span>⚡</span> Google Cloud Pub/Sub
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Dashboard Flow & Architecture Section -->
+    <section id="architecture" class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-20 space-y-16">
+      <div class="text-center space-y-3">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+          Interactive Architecture &amp; Dashboard Flow
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          Asynchronous Job Dispatch &amp; HITL Pipeline
+        </h2>
+        <p class="text-sm text-slate-400 max-w-2xl mx-auto">
+          Explore core modules or visualize the agentic overtime approval lifecycle in real time.
+        </p>
+      </div>
+
+      <!-- 3-Column CSS Grid containing clickable icons for Dashboard, HR Operations, and Audit Logs -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Dashboard Card -->
+        <a href="/" class="group bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-indigo-500/50 rounded-2xl p-6 transition-all shadow-lg hover:shadow-indigo-500/10 flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-xl text-indigo-400 group-hover:scale-110 transition-transform">
+              📊
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white group-hover:text-indigo-300 transition">Dashboard &amp; Control Center</h3>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Real-time job queue monitoring, status updates across workers, and human-in-the-loop review overrides.
+              </p>
+            </div>
+          </div>
+          <div class="mt-6 flex items-center text-xs font-semibold text-indigo-400 gap-1 group-hover:translate-x-1 transition-transform">
+            Launch Dashboard →
+          </div>
+        </a>
+
+        <!-- HR Operations Card -->
+        <a href="/" class="group bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-purple-500/50 rounded-2xl p-6 transition-all shadow-lg hover:shadow-purple-500/10 flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-xl text-purple-400 group-hover:scale-110 transition-transform">
+              👥
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white group-hover:text-purple-300 transition">HR Operations &amp; Employees</h3>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Manage employee timesheet records, base rates, department assignments, and overtime approval flags.
+              </p>
+            </div>
+          </div>
+          <div class="mt-6 flex items-center text-xs font-semibold text-purple-400 gap-1 group-hover:translate-x-1 transition-transform">
+            View Records →
+          </div>
+        </a>
+
+        <!-- Audit Logs Card -->
+        <a href="/" class="group bg-slate-900/80 hover:bg-slate-900 border border-slate-800 hover:border-pink-500/50 rounded-2xl p-6 transition-all shadow-lg hover:shadow-pink-500/10 flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center text-xl text-pink-400 group-hover:scale-110 transition-transform">
+              📜
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white group-hover:text-pink-300 transition">Audit Logs &amp; Policy Rules</h3>
+              <p class="text-xs text-slate-400 mt-1 leading-relaxed">
+                Query MeiliSearch policy rulebooks, inspect threshold caps, and review autonomous reasoning trace logs.
+              </p>
+            </div>
+          </div>
+          <div class="mt-6 flex items-center text-xs font-semibold text-pink-400 gap-1 group-hover:translate-x-1 transition-transform">
+            Inspect Policies →
+          </div>
+        </a>
+      </div>
+
+      <!-- Flow Chart Component: Overtime Approval Request Lifecycle -->
+      <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 space-y-6">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <h3 class="text-lg font-bold text-white">Overtime Approval Lifecycle Flow Chart</h3>
+            <p class="text-xs text-slate-400 mt-0.5">End-to-end agentic workflow execution from dispatcher to supervisor resolution.</p>
+          </div>
+          <span class="px-3 py-1 bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-mono rounded-full">
+            Genkit Restartable Flow
+          </span>
+        </div>
+
+        <!-- Flowchart Steps Grid / Chain -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 relative">
+          <!-- Step 1 -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+            <div class="text-[10px] font-mono text-indigo-400 font-semibold">STAGE 01</div>
+            <div class="text-sm font-bold text-white">Command Dispatched</div>
+            <p class="text-[11px] text-slate-400 leading-normal">Client triggers /jobs with timesheet audit command.</p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+            <div class="text-[10px] font-mono text-purple-400 font-semibold">STAGE 02</div>
+            <div class="text-sm font-bold text-white">Worker &amp; Policies</div>
+            <p class="text-[11px] text-slate-400 leading-normal">Pub/Sub worker invokes Genkit; agent searches rules &amp; record.</p>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+            <div class="text-[10px] font-mono text-amber-400 font-semibold">STAGE 03</div>
+            <div class="text-sm font-bold text-white">Threshold Check</div>
+            <p class="text-[11px] text-slate-400 leading-normal">If OT &gt; Cap (e.g. 22h &gt; 10h), interrupt is triggered.</p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+            <div class="text-[10px] font-mono text-pink-400 font-semibold">STAGE 04</div>
+            <div class="text-sm font-bold text-white">Supervisor Review</div>
+            <p class="text-[11px] text-slate-400 leading-normal">Job status set to <code class="text-indigo-300">needs_review</code>. Human supervisor approves/rejects.</p>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 relative">
+            <div class="text-[10px] font-mono text-emerald-400 font-semibold">STAGE 05</div>
+            <div class="text-sm font-bold text-white">Flow Resumed</div>
+            <p class="text-[11px] text-slate-400 leading-normal">Agent resumes with decision, finalizes status as <code class="text-indigo-300">completed</code>.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:px-6 lg:px-8 sm:flex-row items-center justify-between gap-4">
+      <div>Taskmaster Agent Orchestration Platform • Built with Google Genkit &amp; Gemini</div>
+      <div class="flex items-center gap-4">
+        <a href="/" class="hover:text-slate-300 transition">Control Center</a>
+        <a href="/docs/openapi.yaml" target="_blank" class="hover:text-slate-300 transition">OpenAPI Spec</a>
+        <a href="https://github.com/JawadulHadi/taskmaster-agent.git" target="_blank" class="hover:text-slate-300 transition">GitHub Repo</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>`);
+});
+
 // ── Interactive Web Console (Preview UI) ──
 app.get("/", (req, res) => {
   res.setHeader("Content-Type", "text/html");
@@ -411,8 +698,35 @@ app.get("/", (req, res) => {
   <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-inner overflow-hidden">
-          <img src="/logo.svg" alt="Genkit ADK Logo" class="w-8 h-8 animate-spin" style="animation-duration: 25s;" />
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-inner overflow-visible">
+          <svg class="w-8 h-8 transition-transform duration-300 hover:scale-110 hover:opacity-90 cursor-pointer" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="genkitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#6366f1" />
+                <stop offset="50%" stop-color="#8b5cf6" />
+                <stop offset="100%" stop-color="#ec4899" />
+              </linearGradient>
+              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+            <circle cx="60" cy="60" r="52" fill="none" stroke="url(#genkitGrad)" stroke-width="3" stroke-dasharray="12 6" opacity="0.8">
+              <animateTransform attributeName="transform" type="rotate" from="0 60 60" to="360 60 60" dur="20s" repeatCount="indefinite" />
+            </circle>
+            <polygon points="60,15 99,37 99,83 60,105 21,83 21,37" fill="#090d16" stroke="url(#genkitGrad)" stroke-width="4" filter="url(#glow)" />
+            <circle cx="60" cy="35" r="5" fill="#6366f1" />
+            <circle cx="85" cy="75" r="5" fill="#ec4899" />
+            <circle cx="35" cy="75" r="5" fill="#8b5cf6" />
+            <line x1="60" y1="35" x2="85" y2="75" stroke="#8b5cf6" stroke-width="2.5" opacity="0.7" />
+            <line x1="85" y1="75" x2="35" y2="75" stroke="#ec4899" stroke-width="2.5" opacity="0.7" />
+            <line x1="35" y1="75" x2="60" y2="35" stroke="#6366f1" stroke-width="2.5" opacity="0.7" />
+            <circle cx="60" cy="60" r="10" fill="url(#genkitGrad)">
+              <animate attributeName="r" values="8;12;8" dur="3s" repeatCount="indefinite" />
+              <animate attributeName="opacity" values="0.7;1;0.7" dur="3s" repeatCount="indefinite" />
+            </circle>
+            <circle cx="60" cy="60" r="4" fill="#ffffff" />
+          </svg>
         </div>
         <div>
           <div class="flex items-center gap-2">
@@ -427,6 +741,9 @@ app.get("/", (req, res) => {
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1.5"></span>
           Agentic Loop Active
         </span>
+        <a href="/branding" class="px-3 py-1.5 text-xs font-medium bg-slate-900 hover:bg-slate-800 text-indigo-300 rounded-md border border-indigo-500/30 transition flex items-center gap-1.5">
+          <span>✨</span> Branding
+        </a>
         <button id="refreshBtn" onclick="loadAllData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md border border-slate-700 transition flex items-center gap-1">
           <span>↻</span> Refresh
         </button>
