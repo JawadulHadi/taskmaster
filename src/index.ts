@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import {
   Task,
   TaskStatus,
@@ -55,6 +56,204 @@ export function onHumanReviewNotification(listener: NotificationListener) {
 }
 
 /**
+ * Event-Driven Agentic Workflow Engine for orchestrating HR compliance audits,
+ * Gemini semantic extraction, validation, HITL interrupts, and Meilisearch audit indexing.
+ */
+class AgenticWorkflowEngine extends EventEmitter {
+  constructor() {
+    super();
+    this.setupEventListeners();
+  }
+
+  private setupEventListeners() {
+    this.on("JOB_INGESTED", async (eventData: { task: Task; rawText: string }) => {
+      const { task } = eventData;
+      console.log(`[AgenticWorkflow] Event JOB_INGESTED for task ${task.id}`);
+      this.emit("AI_ANALYSIS_STARTED", eventData);
+    });
+
+    this.on("AI_ANALYSIS_STARTED", async (eventData: { task: Task; rawText: string }) => {
+      const { task, rawText } = eventData;
+      try {
+        console.log(`[AgenticWorkflow] Executing Gemini 3.5 Flash semantic timesheet parser for task ${task.id}`);
+        task.auditLogs.push({
+          timestamp: new Date().toISOString(),
+          stage: "gemini_parsing",
+          actor: "gemini_agent",
+          message: "Transforming unstructured shift text into structured timesheet JSON via Gemini 3.5 Flash",
+        });
+
+        const structuredTimesheet = await processUnstructuredTimesheet(rawText);
+        task.structuredTimesheet = structuredTimesheet;
+        task.employeeId = structuredTimesheet.employeeId;
+
+        this.emit("POLICY_VALIDATION_TRIGGERED", { task, structuredTimesheet });
+      } catch (err: any) {
+        this.emit("WORKFLOW_FAILED", { task, error: err });
+      }
+    });
+
+    this.on("POLICY_VALIDATION_TRIGGERED", async (eventData: { task: Task; structuredTimesheet: StructuredTimesheet }) => {
+      const { task, structuredTimesheet } = eventData;
+      try {
+        console.log(`[AgenticWorkflow] Running HR policy validation service for task ${task.id}`);
+        task.auditLogs.push({
+          timestamp: new Date().toISOString(),
+          stage: "policy_validation",
+          actor: "system",
+          message: "Validating extracted timesheet metrics against corporate labor compliance rules",
+        });
+
+        let employeeRecord: EmployeeRecord | null = null;
+        if (structuredTimesheet.employeeId && structuredTimesheet.employeeId !== "emp_unknown") {
+          const empSnap = await employeesCol.doc(structuredTimesheet.employeeId).get();
+          if (empSnap.exists) {
+            employeeRecord = empSnap.data();
+          }
+        }
+
+        const { report, auditResults } = await validateTaskPolicies(structuredTimesheet, employeeRecord);
+
+        task.validationReport = report;
+        task.policyAuditResults = auditResults;
+        task.requiresHumanReview = report.requiresHumanReview;
+        task.updatedAt = new Date().toISOString();
+
+        if (report.requiresHumanReview) {
+          this.emit("HUMAN_REVIEW_INTERRUPT", { task, report, auditResults, employeeRecord, structuredTimesheet });
+        } else {
+          this.emit("WORKFLOW_COMPLETED", { task, report, auditResults, employeeRecord, structuredTimesheet });
+        }
+      } catch (err: any) {
+        this.emit("WORKFLOW_FAILED", { task, error: err });
+      }
+    });
+
+    this.on("HUMAN_REVIEW_INTERRUPT", async (eventData: { task: Task; report: HRValidationReport; auditResults: PolicyAuditResult[]; structuredTimesheet: StructuredTimesheet }) => {
+      const { task, report, auditResults, structuredTimesheet } = eventData;
+      task.status = "needs_review";
+      const violations = auditResults.filter((r) => !r.passed);
+      const violationSummary = violations.map((r) => r.violationMessage).join("; ");
+
+      task.auditLogs.push({
+        timestamp: new Date().toISOString(),
+        stage: "hitl_interrupt",
+        actor: "system",
+        message: `Execution paused for Human-in-the-Loop review. Violations: ${violationSummary}`,
+        details: { violations },
+      });
+
+      const notification = triggerHumanReviewNotification(task, violations);
+
+      await updateJobStatus(task.id, "needs_review", {
+        message: `Policy Review Required: ${violationSummary}`,
+        structuredTimesheet,
+        validationReport: report,
+        notificationId: notification.id,
+      });
+
+      this.emit("AUDIT_INDEXING_TRIGGERED", { task });
+    });
+
+    this.on("WORKFLOW_COMPLETED", async (eventData: { task: Task; report: HRValidationReport; employeeRecord: EmployeeRecord | null; structuredTimesheet: StructuredTimesheet }) => {
+      const { task, report, employeeRecord, structuredTimesheet } = eventData;
+      task.status = "completed";
+      task.completedAt = new Date().toISOString();
+
+      task.auditLogs.push({
+        timestamp: new Date().toISOString(),
+        stage: "completion",
+        actor: "system",
+        message: "Timesheet validated successfully with 0 policy violations.",
+      });
+
+      if (employeeRecord && structuredTimesheet.employeeId) {
+        await employeesCol.doc(structuredTimesheet.employeeId).update({
+          regularHours: structuredTimesheet.regularHours,
+          overtimeHours: structuredTimesheet.overtimeHours,
+        });
+      }
+
+      await updateJobStatus(task.id, "completed", {
+        result: `Timesheet approved. Regular: ${structuredTimesheet.regularHours}h, Overtime: ${structuredTimesheet.overtimeHours}h. Total: ${structuredTimesheet.totalHours}h. All compliance checks passed.`,
+        structuredTimesheet,
+        validationReport: report,
+      });
+
+      this.emit("AUDIT_INDEXING_TRIGGERED", { task });
+    });
+
+    this.on("AUDIT_INDEXING_TRIGGERED", async (eventData: { task: Task }) => {
+      const { task } = eventData;
+      try {
+        console.log(`[AgenticWorkflow] Indexing validated task ${task.id} into Meilisearch audit history`);
+        await indexValidatedTask(task);
+      } catch (meiliErr: any) {
+        console.warn(`[AgenticWorkflow] Audit indexing skipped (${meiliErr?.message}).`);
+      }
+      tasksStore.set(task.id, task);
+    });
+
+    this.on("WORKFLOW_FAILED", async (eventData: { task: Task; error: any }) => {
+      const { task, error } = eventData;
+      const errorMsg = error?.message || String(error);
+      console.error(`[AgenticWorkflow] Workflow failed for task ${task.id}:`, errorMsg);
+
+      task.status = "failed";
+      task.updatedAt = new Date().toISOString();
+      task.auditLogs.push({
+        timestamp: new Date().toISOString(),
+        stage: "completion",
+        actor: "system",
+        message: `Processing failed with error: ${errorMsg}`,
+      });
+
+      await updateJobStatus(task.id, "error", { message: errorMsg });
+
+      try {
+        await indexValidatedTask(task);
+      } catch {}
+
+      tasksStore.set(task.id, task);
+    });
+  }
+
+  public async dispatchJob(taskId: string, tenantId: string, command: string, rawText: string): Promise<Task> {
+    const auditLogs: AuditLogEntry[] = [
+      {
+        timestamp: new Date().toISOString(),
+        stage: "ingestion",
+        actor: "system",
+        message: `Ingested task message for tenant ${tenantId} via Pub/Sub topic ${PUBSUB_TOPIC}`,
+        details: { taskId, tenantId },
+      },
+    ];
+
+    const task: Task = {
+      id: taskId,
+      jobId: taskId,
+      tenantId,
+      type: "timesheet_validation",
+      status: "running",
+      command,
+      rawTimesheetText: rawText,
+      auditLogs,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    tasksStore.set(taskId, task);
+    await createJob(taskId, command, tenantId);
+    await updateJobStatus(taskId, "running");
+
+    this.emit("JOB_INGESTED", { task, rawText });
+    return task;
+  }
+}
+
+export const workflowEngine = new AgenticWorkflowEngine();
+
+/**
  * Dispatches a notification for Human-in-the-Loop overtime and policy review.
  */
 export function triggerHumanReviewNotification(
@@ -96,7 +295,6 @@ export function triggerHumanReviewNotification(
 
   notificationsStore.unshift(notification);
 
-  // Notify active listeners (e.g. SSE / WebSocket / console)
   for (const listener of notificationListeners) {
     try {
       listener(notification);
@@ -111,7 +309,6 @@ export function triggerHumanReviewNotification(
 
 /**
  * Validates a structured timesheet against corporate policies and employee records.
- * Uses the comprehensive validator in `src/utils/validator.ts`.
  */
 export async function validateTimesheetPolicies(
   structuredTimesheet: StructuredTimesheet,
@@ -125,6 +322,7 @@ export async function validateTimesheetPolicies(
 
 /**
  * Core event handler for timesheet validation messages received via Pub/Sub.
+ * Delegates to the AgenticWorkflowEngine event-driven loop.
  */
 export async function handleTimesheetMessage(payload: any, ack?: () => void) {
   const taskId = payload.taskId || payload.id || payload.jobId || randomUUID();
@@ -134,159 +332,13 @@ export async function handleTimesheetMessage(payload: any, ack?: () => void) {
 
   console.log(`[Taskmaster Subscriber] Ingested message for Task ID: ${taskId} on topic: ${PUBSUB_TOPIC}`);
 
-  const auditLogs: AuditLogEntry[] = [
-    {
-      timestamp: new Date().toISOString(),
-      stage: "ingestion",
-      actor: "system",
-      message: `Ingested task message for tenant ${tenantId} via Pub/Sub topic ${PUBSUB_TOPIC}`,
-      details: { taskId, tenantId },
-    },
-  ];
-
-  const task: Task = {
-    id: taskId,
-    jobId: taskId,
-    tenantId,
-    type: "timesheet_validation",
-    status: "running",
-    command,
-    rawTimesheetText,
-    auditLogs,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  tasksStore.set(taskId, task);
-  await createJob(taskId, command, tenantId);
-  await updateJobStatus(taskId, "running");
-
   try {
-    // Step 1: Process unstructured timesheet text using Google Gemini API
-    console.log(`[Taskmaster Subscriber] Processing timesheet text with Gemini API for Task: ${taskId}...`);
-    auditLogs.push({
-      timestamp: new Date().toISOString(),
-      stage: "gemini_parsing",
-      actor: "gemini_agent",
-      message: "Transforming unstructured shift text into structured timesheet JSON data via Gemini 2.5 Flash",
-    });
-
-    const structuredTimesheet = await processUnstructuredTimesheet(rawTimesheetText);
-    task.structuredTimesheet = structuredTimesheet;
-    task.employeeId = structuredTimesheet.employeeId;
-
-    // Step 2: Retrieve employee record from Firestore
-    let employeeRecord: EmployeeRecord | null = null;
-    if (structuredTimesheet.employeeId && structuredTimesheet.employeeId !== "emp_unknown") {
-      const empSnap = await employeesCol.doc(structuredTimesheet.employeeId).get();
-      if (empSnap.exists) {
-        employeeRecord = empSnap.data();
-      }
-    }
-
-    // Step 3: Run HR Policy & Labor Regulation Auditing via validator
-    auditLogs.push({
-      timestamp: new Date().toISOString(),
-      stage: "policy_validation",
-      actor: "system",
-      message: "Validating extracted timesheet metrics against corporate labor compliance rules",
-    });
-
-    const { report, auditResults } = await validateTaskPolicies(
-      structuredTimesheet,
-      employeeRecord,
-    );
-
-    task.validationReport = report;
-    task.policyAuditResults = auditResults;
-    task.requiresHumanReview = report.requiresHumanReview;
-    task.updatedAt = new Date().toISOString();
-
-    // Step 4: Routing & Notification handling based on validation outcome
-    if (report.requiresHumanReview) {
-      task.status = "needs_review";
-      const violations = auditResults.filter((r) => !r.passed);
-      const violationSummary = violations.map((r) => r.violationMessage).join("; ");
-
-      auditLogs.push({
-        timestamp: new Date().toISOString(),
-        stage: "hitl_interrupt",
-        actor: "system",
-        message: `Execution paused for Human-in-the-Loop review. Violations: ${violationSummary}`,
-        details: { violations },
-      });
-
-      // Trigger notification & status update for supervisor
-      const notification = triggerHumanReviewNotification(task, violations);
-
-      await updateJobStatus(taskId, "needs_review", {
-        message: `Policy Review Required: ${violationSummary}`,
-        structuredTimesheet,
-        validationReport: report,
-        notificationId: notification.id,
-      });
-
-      console.log(`[Taskmaster Subscriber] Task ${taskId} flagged for human approval. Notification ${notification.id} dispatched.`);
-    } else {
-      task.status = "completed";
-      task.completedAt = new Date().toISOString();
-
-      auditLogs.push({
-        timestamp: new Date().toISOString(),
-        stage: "completion",
-        actor: "system",
-        message: "Timesheet validated successfully with 0 policy violations.",
-      });
-
-      // Update employee record hours in Firestore if employee exists
-      if (employeeRecord && structuredTimesheet.employeeId) {
-        await employeesCol.doc(structuredTimesheet.employeeId).update({
-          regularHours: structuredTimesheet.regularHours,
-          overtimeHours: structuredTimesheet.overtimeHours,
-        });
-      }
-
-      await updateJobStatus(taskId, "completed", {
-        result: `Timesheet approved. Regular: ${structuredTimesheet.regularHours}h, Overtime: ${structuredTimesheet.overtimeHours}h. Total: ${structuredTimesheet.totalHours}h. All compliance checks passed.`,
-        structuredTimesheet,
-        validationReport: report,
-      });
-
-      console.log(`[Taskmaster Subscriber] Task ${taskId} completed successfully.`);
-    }
-
-    // Step 5: Index validated task data into Meilisearch for searchable audit history
-    try {
-      await indexValidatedTask(task);
-    } catch (meiliErr: any) {
-      console.warn(`[Taskmaster Subscriber] Audit indexing skipped (${meiliErr?.message}).`);
-    }
-
-    tasksStore.set(taskId, task);
-
+    await workflowEngine.dispatchJob(taskId, tenantId, command, rawTimesheetText);
     if (typeof ack === "function") {
       ack();
     }
   } catch (err: any) {
-    const errorMsg = err?.message || String(err);
-    console.error(`[Taskmaster Subscriber] Error processing task ${taskId}:`, errorMsg);
-
-    task.status = "failed";
-    task.updatedAt = new Date().toISOString();
-    task.auditLogs.push({
-      timestamp: new Date().toISOString(),
-      stage: "completion",
-      actor: "system",
-      message: `Processing failed with error: ${errorMsg}`,
-    });
-
-    await updateJobStatus(taskId, "error", { message: errorMsg });
-
-    // Index failed task in Meilisearch as well for complete audit logs
-    try {
-      await indexValidatedTask(task);
-    } catch {}
-
+    console.error(`[Taskmaster Subscriber] Error dispatching event loop for task ${taskId}:`, err?.message);
     if (typeof ack === "function") {
       ack();
     }
@@ -309,6 +361,7 @@ export default {
   handleTimesheetMessage,
   validateTimesheetPolicies,
   triggerHumanReviewNotification,
+  workflowEngine,
   notificationsStore,
   tasksStore,
 };

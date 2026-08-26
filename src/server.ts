@@ -349,24 +349,27 @@ app.get("/", (req, res) => {
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased">
   <!-- Top Navigation Header -->
-  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+  <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-lg bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400 font-bold text-lg shadow-inner">
-          ⚡
+        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-inner overflow-hidden">
+          <img src="/logo.svg" alt="Genkit ADK Logo" class="w-8 h-8 animate-spin" style="animation-duration: 25s;" />
         </div>
         <div>
-          <h1 class="text-base font-semibold text-white tracking-tight">Taskmaster Agent</h1>
-          <p class="text-xs text-slate-400">Autonomous HR Ops &amp; Human-in-the-Loop Orchestrator</p>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base font-bold text-white tracking-tight">Taskmaster Agent</h1>
+            <span class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">Genkit ADK SDK v2.5</span>
+          </div>
+          <p class="text-xs text-slate-400">Autonomous HR Compliance &amp; Event-Driven Loop Engine</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5"></span>
-          Agent Online
+        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1.5"></span>
+          Agentic Loop Active
         </span>
-        <button id="refreshBtn" onclick="loadAllData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md border border-slate-700 transition">
-          ↻ Refresh
+        <button id="refreshBtn" onclick="loadAllData()" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md border border-slate-700 transition flex items-center gap-1">
+          <span>↻</span> Refresh
         </button>
       </div>
     </div>

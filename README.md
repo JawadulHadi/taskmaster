@@ -1,143 +1,105 @@
-# Taskmaster Agent
+<p align="center">
+  <img src="/public/repo-banner.svg" alt="Taskmaster Agentic Engine Banner" width="100%" />
+</p>
 
-An event-driven HR operations agent built for the **All Things Agentic Hackathon** (Taskmaster track). The agent runs in the background, processes large datasets via MeiliSearch, and automates complex HR workflows asynchronously—pausing for human approval when needed.
+# Taskmaster Agent — Genkit & ADK Agentic Loops SDK™
 
-## Features
+[![Genkit](https://img.shields.io/badge/Powered_by-Genkit-orange?style=flat-square&logo=firebase)](https://firebase.google.com/docs/genkit)
+[![Gemini 3.5 Flash](https://img.shields.io/badge/Model-Gemini_3.5_Flash-blue?style=flat-square&logo=google)](https://ai.google.dev)
+[![Architecture](https://img.shields.io/badge/Architecture-Event_Driven_Pub/Sub-purple?style=flat-square)](/docs/ARCHITECTURE.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-- **Asynchronous background processing** – jobs are queued in Firestore and processed by a Pub/Sub‑triggered Cloud Run worker.
-- **Agentic decision‑making** – the Genkit‑powered agent decides which tools to call (search policies, fetch employee records, resolve overtime) in any order.
-- **Human‑in‑the‑loop** – overtime violations trigger an interrupt, pausing the agent until a human approves or rejects the action.
-- **Real integrations** – MeiliSearch for fast full‑text search, Firestore for state, Pub/Sub for messaging, Gemini for reasoning.
+An enterprise-grade, event-driven HR operations agent and autonomous loop engine built with the **Genkit & ADK Agentic Loops SDK™**. The agent runs asynchronously across Cloud Run and Pub/Sub, processes unstructured timesheet logs via **Gemini 3.5 Flash**, queries corporate policies in **Meilisearch**, validates compliance against **Firestore** employee records, and pauses for **Human-in-the-Loop (HITL)** approvals when labor violations occur.
 
-## Tech Stack
+---
 
-- [Genkit](https://firebase.google.com/docs/genkit) with Google AI (Gemini)
-- Google Cloud Firestore, Pub/Sub, Cloud Run
-- MeiliSearch
-- TypeScript, Express
+## 🎨 Branding & Assets
 
-## Project Structure
+- **Official Logo**: `/public/logo.svg`
+- **Repository Banner**: `/public/repo-banner.svg`
+- **SDK Documentation**: [`/docs/AGENT_SDK.md`](/docs/AGENT_SDK.md)
+- **Architecture Spec**: [`/docs/ARCHITECTURE.md`](/docs/ARCHITECTURE.md)
+- **End-to-End Flow**: [`/docs/flow_description.md`](/docs/flow_description.md)
+
+---
+
+## 🚀 Key Features
+
+- **Autonomous Agentic Loops (`Genkit` + `Gemini 3.5 Flash`)** – The AI model dynamically reasons over commands, evaluates tools (`search_policies`, `get_employee_record`, `resolve_overtime`), and iterates up to `maxTurns: 6`.
+- **Event-Driven Pub/Sub & Cloud Run Architecture** – Asynchronous job dispatching ensures clients never block. Pub/Sub pushes event payloads to Cloud Run workers for horizontal scalability.
+- **Restartable HITL Interrupts** – When overtime thresholds (e.g., > 10 hours) are exceeded, Genkit pauses execution, preserves conversation history, and triggers supervisor review dashboards.
+- **Real-Time Control Center UI** – Live web console built with Tailwind CSS displaying active job queues, employee timesheet databases, policy rulebooks, and interactive approval flows.
+
+---
+
+## 📂 Project Structure
 
 ```markdown
 taskmaster-agent/
+├── public/
+│   ├── logo.svg                      # Unique Genkit ADK Logo
+│   └── repo-banner.svg               # Repository Banner
 ├── src/
 │   ├── ai/
-│   │   ├── genkit.ts                 # Genkit instance + Gemini model
-│   │   ├── flows/taskmasterFlow.ts   # Agent loop
+│   │   ├── genkit.ts                 # Genkit instance + Gemini 3.5 Flash model
+│   │   ├── flows/taskmasterFlow.ts   # Agentic reasoning loop
 │   │   └── tools/
-│   │       ├── searchPolicies.ts
-│   │       ├── getEmployeeRecord.ts
-│   │       └── resolveOvertime.ts    # HITL interrupt
+│   │       ├── searchPolicies.ts     # Meilisearch policy query tool
+│   │       ├── getEmployeeRecord.ts  # Firestore employee lookup tool
+│   │       └── resolveOvertime.ts    # HITL interrupt resolution tool
 │   ├── lib/
-│   │   ├── firestore.ts
-│   │   ├── pubsub.ts
-│   │   └── meili.ts
-│   └── server.ts                     # Express + dispatcher + worker + resume
-├── scripts/seed.ts                   # Seed demo data
-├── Dockerfile
+│   │   ├── firestore.ts              # Firestore database client
+│   │   ├── pubsub.ts                 # Pub/Sub message broker & local fallback
+│   │   └── meili.ts                  # Meilisearch integration
+│   ├── services/
+│   │   └── gemini.ts                 # Gemini 3.5 Flash unstructured timesheet parser
+│   ├── utils/
+│   │   └── validator.ts              # HR policy compliance engine
+│   ├── index.ts                      # Event-driven workflow engine (EventEmitter)
+│   └── server.ts                     # Express server, dispatcher, worker & UI
+├── docs/
+│   ├── AGENT_SDK.md                  # Genkit ADK SDK documentation
+│   ├── ARCHITECTURE.md               # System component diagrams
+│   └── flow_description.md           # End-to-end execution flow
 ├── package.json
 └── tsconfig.json
 ```
 
-## Prerequisites
+---
 
-- Node.js 20+
-- A Google Cloud project with Firestore and Pub/Sub enabled
-- A MeiliSearch instance (local or cloud)
-- Gemini API key (from Google AI Studio)
-- (Optional) Google Cloud CLI for deployment
+## 🛠️ Quick Start & Local Development
 
-## Local Setup
-
-1. **Clone and install**
-
+1. **Install Dependencies**
    ```bash
    npm install
    ```
-2. **Set environment variables**Copy `.env.example` to `.env` and fill in the values.
-3. **Start MeiliSearch**If using Docker:
 
-   ```bash
-   docker run -p 7700:7700 getmeili/meilisearch:v1.6
-   ```
-4. **Run Firestore emulator** (optional, but recommended for local dev)
+2. **Configure Environment Variables**
+   Copy `.env.example` to `.env` and set your `GEMINI_API_KEY` and Google Cloud settings.
 
-   ```bash
-   gcloud emulators firestore start --host-port=localhost:8080
-   ```
-
-   Then set `FIRESTORE_EMULATOR_HOST=localhost:8080` in your `.env`.
-5. **Seed demo data**
-
+3. **Seed Demo Data & Policies**
    ```bash
    npm run seed
    ```
-6. **Start the server**
 
+4. **Start the Development Server**
    ```bash
    npm run dev
    ```
+   Open `http://localhost:3000` to access the interactive **HR Ops Control Center**.
 
-## Usage
+---
 
-### Submit a job
+## 📡 API Endpoints
 
-```bash
-curl -X POST http://localhost:8080/jobs \
-  -H "Content-Type: application/json" \
-  -d '{"command": "Check overtime for employee emp_002"}'
-```
+- **`POST /jobs`** – Submit an asynchronous HR directive.
+- **`GET /jobs`** – List all jobs and execution states.
+- **`GET /jobs/:jobId`** – Get single job details and audit trail.
+- **`POST /jobs/:jobId/resume`** – Resume a paused HITL job with a manager decision (`approved` / `rejected`).
+- **`POST /tasks/run`** – Pub/Sub push webhook endpoint triggering the Cloud Run worker.
 
-Response: `202` with `jobId` and `status: "queued"`.
+---
 
-### Simulate Pub/Sub push (local)
-
-If you don’t have Pub/Sub emulator, you can manually trigger the worker endpoint:
-
-```bash
-curl -X POST http://localhost:8080/tasks/run \
-  -H "Content-Type: application/json" \
-  -d '{"message":{"data":"<base64 of {\"jobId\":\"...\",\"tenantId\":\"tenant_01\"}>"}}'
-```
-
-### Resume a paused job (HITL)
-
-When the agent hits an overtime violation, it pauses. To approve or reject:
-
-```bash
-curl -X POST http://localhost:8080/jobs/<jobId>/resume \
-  -H "Content-Type: application/json" \
-  -d '{"decision": "approved"}'
-```
-
-## Deployment to Cloud Run
-
-1. **Build and push the Docker image**
-
-   ```bash
-   gcloud builds submit --tag gcr.io/<project-id>/taskmaster-agent
-   ```
-2. **Deploy to Cloud Run**
-
-   ```bash
-   gcloud run deploy taskmaster-agent \
-     --image gcr.io/<project-id>/taskmaster-agent \
-     --platform managed \
-     --region us-central1 \
-     --allow-unauthenticated \
-     --set-env-vars "GEMINI_API_KEY=...,GOOGLE_CLOUD_PROJECT=...,MEILI_URL=...,MEILI_API_KEY=..."
-   ```
-3. **Create a Pub/Sub topic and push subscription**
-
-   ```bash
-   gcloud pubsub topics create taskmaster-jobs
-   gcloud pubsub subscriptions create taskmaster-jobs-sub \
-     --topic taskmaster-jobs \
-     --push-endpoint=https://<cloud-run-url>/tasks/run \
-     --push-auth-service-account=<service-account-email>
-   ```
-4. **Update the dispatcher** to publish to the actual Pub/Sub topic (set `PUBSUB_TOPIC` env var).
-
-## License
+## 📄 License
 
 MIT
