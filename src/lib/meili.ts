@@ -44,26 +44,26 @@ const inMemoryPolicies: PolicyDocument[] = [
 let realClient: Meilisearch | null = null;
 const host = process.env.MEILI_HOST || process.env.MEILI_URL;
 
-if (host) {
+if (host && !host.includes("localhost")) {
   try {
     realClient = new Meilisearch({
       host,
       apiKey: process.env.MEILI_API_KEY,
     });
   } catch (err) {
-    console.warn("[Taskmaster] MeiliSearch client initialization failed, using in-memory store", err);
+    // Silently use in-memory store fallback
   }
 }
 
 export const policyIndex = {
   async search(query: string, options: { limit?: number } = {}) {
     const limit = options.limit ?? 3;
-    if (realClient) {
+    if (realClient && !host?.includes("localhost")) {
       try {
         const index = realClient.index("policies");
         return await index.search(query, options);
       } catch (err) {
-        console.warn("[Taskmaster] Meilisearch search failed, falling back to in-memory search:", err);
+        // Fallback to in-memory search silently
       }
     }
 

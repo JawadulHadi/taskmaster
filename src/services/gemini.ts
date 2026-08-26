@@ -168,7 +168,7 @@ Return ONLY valid JSON adhering to this exact schema:
 }`;
 
   // Candidate models to try in order of resilience
-  const candidateModels = ["gemini-3.5-flash", "gemini-2.5-flash"];
+  const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
 
   for (const model of candidateModels) {
     try {
@@ -202,10 +202,22 @@ Return ONLY valid JSON adhering to this exact schema:
         };
       }
     } catch (err: any) {
-      // If temporary 503 or quota issue, continue to fallback model or heuristic
-      const isTemporary = err?.message?.includes("503") || err?.message?.includes("UNAVAILABLE") || err?.status === 503;
+      // If temporary 503, quota exhaustion (429), or rate limit, fallback to heuristic parser
+      const errorStr = String(err?.message || err);
+      const isTemporary =
+        errorStr.includes("503") ||
+        errorStr.includes("UNAVAILABLE") ||
+        errorStr.includes("RESOURCE_EXHAUSTED") ||
+        errorStr.includes("429") ||
+        errorStr.includes("quota") ||
+        errorStr.includes("rate-limit") ||
+        err?.status === 503 ||
+        err?.status === 429;
       if (isTemporary) {
+        console.warn(`[Gemini] Model ${model} encountered rate limit / quota exhaustion. Falling back to next model or heuristic parser.`);
         continue;
+      } else {
+        console.warn(`[Gemini] Model ${model} error:`, errorStr);
       }
     }
   }

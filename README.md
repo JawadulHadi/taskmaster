@@ -6,20 +6,40 @@
 
 [![Genkit](https://img.shields.io/badge/Powered_by-Genkit-orange?style=flat-square&logo=firebase)](https://firebase.google.com/docs/genkit)
 [![Gemini 3.5 Flash](https://img.shields.io/badge/Model-Gemini_3.5_Flash-blue?style=flat-square&logo=google)](https://ai.google.dev)
-[![Architecture](https://img.shields.io/badge/Architecture-Event_Driven_Pub/Sub-purple?style=flat-square)](/docs/ARCHITECTURE.md)
+[![Hackathon Track](https://img.shields.io/badge/Hackathon_Track-Agentic_Workflow_Automation-purple?style=flat-square)](https://devpost.com)
+[![Architecture](https://img.shields.io/badge/Architecture-Event_Driven_Pub/Sub-emerald?style=flat-square)](/docs/ARCHITECTURE.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-An enterprise-grade, event-driven HR operations agent and autonomous loop engine built with the **Genkit & ADK Agentic Loops SDK™**. The agent runs asynchronously across Cloud Run and Pub/Sub, processes unstructured timesheet logs via **Gemini 3.5 Flash**, queries corporate policies in **Meilisearch**, validates compliance against **Firestore** employee records, and pauses for **Human-in-the-Loop (HITL)** approvals when labor violations occur.
+**All Things Agentic Hackathon Submission — Track: Agentic Workflow Automation**
+
+An enterprise-grade, event-driven HR operations agent and autonomous loop engine built with the **Genkit & ADK Agentic Loops SDK™**. The agent runs asynchronously across Cloud Run and Pub/Sub, handles heavy-duty HR compliance auditing over massive datasets via **Meilisearch** and **Cloud Firestore**, parses unstructured shift logs using **Gemini 3.5 Flash**, and enforces safe guardrails with **Human-in-the-Loop (HITL) interrupts**.
 
 ---
 
-## 🎨 Branding & Assets
+## 🏗️ Architecture & Devpost Submission Guide
 
-- **Official Logo**: `/public/logo.svg`
-- **Repository Banner**: `/public/repo-banner.svg`
-- **SDK Documentation**: [`/docs/AGENT_SDK.md`](/docs/AGENT_SDK.md)
-- **Architecture Spec**: [`/docs/ARCHITECTURE.md`](/docs/ARCHITECTURE.md)
-- **End-to-End Flow**: [`/docs/flow_description.md`](/docs/flow_description.md)
+- **4-Stage Pipeline**: *Dispatch (Pub/Sub)* $\rightarrow$ *Genkit AI Loop (Gemini 3.5 Flash)* $\rightarrow$ *HITL Interrupt (Manager Review)* $\rightarrow$ *Meilisearch Audit Indexing*. Include `/public/repo-banner.svg` or XML diagrams from [`/docs/ARCHITECTURE.md`](/docs/ARCHITECTURE.md) in your Devpost image gallery.
+- **Human-in-the-Loop (HITL) Differentiator**: Taskmaster avoids "black box" failure by detecting labor violations (e.g. overtime > 10 hours), safely pausing execution, preserving conversation state, and awaiting supervisor verification (`approved` / `rejected`) before finalizing payroll.
+
+---
+
+## 👥 How to Add Employee Records
+
+Employee records can be added and managed in three ways:
+1. **Out-of-the-Box Demo Records**: Pre-configured defaults (`emp_001` Alice Chen, `emp_002` John Smith, `emp_003` Maria Garcia) are automatically loaded in memory and Firestore.
+2. **Database Seeding (`npm run seed`)**: Run `npm run seed` to populate corporate policies and employee timesheet records into Cloud Firestore and Meilisearch.
+3. **API Insertion (`POST /employees` or Firestore)**: Directly upsert employee records with base rates, regular hours, and overtime hours:
+   ```json
+   {
+     "id": "emp_004",
+     "name": "Sarah Connor",
+     "department": "Security",
+     "baseRate": 45.0,
+     "regularHours": 160.0,
+     "overtimeHours": 12.5,
+     "overtimeApproved": false
+   }
+   ```
 
 ---
 
@@ -27,43 +47,8 @@ An enterprise-grade, event-driven HR operations agent and autonomous loop engine
 
 - **Autonomous Agentic Loops (`Genkit` + `Gemini 3.5 Flash`)** – The AI model dynamically reasons over commands, evaluates tools (`search_policies`, `get_employee_record`, `resolve_overtime`), and iterates up to `maxTurns: 6`.
 - **Event-Driven Pub/Sub & Cloud Run Architecture** – Asynchronous job dispatching ensures clients never block. Pub/Sub pushes event payloads to Cloud Run workers for horizontal scalability.
-- **Restartable HITL Interrupts** – When overtime thresholds (e.g., > 10 hours) are exceeded, Genkit pauses execution, preserves conversation history, and triggers supervisor review dashboards.
+- **Restartable HITL Interrupts** – When overtime thresholds are exceeded, Genkit pauses execution, preserves conversation history, and triggers supervisor review dashboards.
 - **Real-Time Control Center UI** – Live web console built with Tailwind CSS displaying active job queues, employee timesheet databases, policy rulebooks, and interactive approval flows.
-
----
-
-## 📂 Project Structure
-
-```markdown
-taskmaster-agent/
-├── public/
-│   ├── logo.svg                      # Unique Genkit ADK Logo
-│   └── repo-banner.svg               # Repository Banner
-├── src/
-│   ├── ai/
-│   │   ├── genkit.ts                 # Genkit instance + Gemini 3.5 Flash model
-│   │   ├── flows/taskmasterFlow.ts   # Agentic reasoning loop
-│   │   └── tools/
-│   │       ├── searchPolicies.ts     # Meilisearch policy query tool
-│   │       ├── getEmployeeRecord.ts  # Firestore employee lookup tool
-│   │       └── resolveOvertime.ts    # HITL interrupt resolution tool
-│   ├── lib/
-│   │   ├── firestore.ts              # Firestore database client
-│   │   ├── pubsub.ts                 # Pub/Sub message broker & local fallback
-│   │   └── meili.ts                  # Meilisearch integration
-│   ├── services/
-│   │   └── gemini.ts                 # Gemini 3.5 Flash unstructured timesheet parser
-│   ├── utils/
-│   │   └── validator.ts              # HR policy compliance engine
-│   ├── index.ts                      # Event-driven workflow engine (EventEmitter)
-│   └── server.ts                     # Express server, dispatcher, worker & UI
-├── docs/
-│   ├── AGENT_SDK.md                  # Genkit ADK SDK documentation
-│   ├── ARCHITECTURE.md               # System component diagrams
-│   └── flow_description.md           # End-to-end execution flow
-├── package.json
-└── tsconfig.json
-```
 
 ---
 
@@ -75,7 +60,7 @@ taskmaster-agent/
    ```
 
 2. **Configure Environment Variables**
-   Copy `.env.example` to `.env` and set your `GEMINI_API_KEY` and Google Cloud settings.
+   Run `npm run generate-secrets` to automatically generate API keys and bootstrap `.env`.
 
 3. **Seed Demo Data & Policies**
    ```bash
@@ -103,3 +88,4 @@ taskmaster-agent/
 ## 📄 License
 
 MIT
+

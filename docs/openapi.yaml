@@ -1,0 +1,205 @@
+openapi: 3.0.3
+info:
+  title: Taskmaster HR Agent & Employee Management API
+  description: API documentation for the Taskmaster Agentic Workflow Automation Hackathon submission. Documents employee records management, timesheet auditing, and event-driven dispatch pipelines.
+  version: 1.0.0
+servers:
+  - url: https://ais-dev-w2c4ms4eg2dheteludnmof-732072387778.asia-southeast1.run.app
+    description: Development Server
+paths:
+  /api/employees:
+    get:
+      summary: List all employee records
+      description: Retrieves all registered employee records along with base pay rates, regular hours, overtime hours, and approval statuses.
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  employees:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EmployeeRecord'
+        '500':
+          description: Internal server error
+    post:
+      summary: Add a new employee record
+      description: Provisions a new employee record in Cloud Firestore and memory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmployeeRecord'
+      responses:
+        '201':
+          description: Employee created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  employee:
+                    $ref: '#/components/schemas/EmployeeRecord'
+        '400':
+          description: Invalid input / Missing employee name
+        '500':
+          description: Server error
+
+  /api/employees/{id}:
+    get:
+      summary: Get employee record by ID or name
+      description: Retrieves a single employee record by matching ID or partial name.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Employee ID (e.g. emp_001) or name
+      responses:
+        '200':
+          description: Employee found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  employee:
+                    $ref: '#/components/schemas/EmployeeRecord'
+        '404':
+          description: Employee not found
+        '500':
+          description: Server error
+    put:
+      summary: Update employee record
+      description: Updates employee pay rates, hours, or overtime status.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Employee ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                department:
+                  type: string
+                baseRate:
+                  type: number
+                regularHours:
+                  type: number
+                overtimeHours:
+                  type: number
+                overtimeApproved:
+                  type: boolean
+      responses:
+        '200':
+          description: Employee updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  employee:
+                    $ref: '#/components/schemas/EmployeeRecord'
+        '404':
+          description: Employee not found
+        '500':
+          description: Server error
+
+  /api/jobs:
+    post:
+      summary: Dispatch an asynchronous timesheet processing job
+      description: Creates a job in Firestore and publishes a Pub/Sub event for asynchronous Genkit agent execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  example: "Check overtime for emp_002"
+                tenantId:
+                  type: string
+                  example: "tenant_default"
+      responses:
+        '202':
+          description: Job dispatched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  jobId:
+                    type: string
+
+  /api/jobs/{jobId}/resume:
+    post:
+      summary: Resume suspended job after HITL human supervisor review
+      description: Resumes the Genkit agentic loop with human approval/rejection decision after an overtime violation interrupt.
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum: [approved, rejected]
+                  example: "approved"
+      responses:
+        '200':
+          description: Job resumed and completed successfully
+
+components:
+  schemas:
+    EmployeeRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "emp_001"
+        name:
+          type: string
+          example: "Alice Chen"
+        department:
+          type: string
+          example: "Engineering"
+        baseRate:
+          type: number
+          example: 55.0
+        regularHours:
+          type: number
+          example: 160.0
+        overtimeHours:
+          type: number
+          example: 6.0
+        overtimeApproved:
+          type: boolean
+          example: false

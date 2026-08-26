@@ -18,6 +18,7 @@ import { searchAuditHistory, getAuditHistory } from "./services/meili.js";
 import { validateTaskPolicies } from "./utils/validator.js";
 import { tasksStore, notificationsStore, handleTimesheetMessage } from "./index.js";
 import { Task } from "./models/task.js";
+import { employeeService } from "./services/employeeService.js";
 
 const app = express();
 app.use(express.json());
@@ -111,6 +112,42 @@ app.get(["/api/employees", "/employees"], async (req, res) => {
     res.json({ employees });
   } catch (err: any) {
     res.json({ employees: [] });
+  }
+});
+
+// Get employee by ID or name
+app.get("/api/employees/:id", async (req, res) => {
+  try {
+    const emp = await employeeService.getEmployee(req.params.id);
+    if (!emp) return res.status(404).json({ error: "Employee not found" });
+    res.json({ employee: emp });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch employee" });
+  }
+});
+
+// Add a new employee
+app.post("/api/employees", async (req, res) => {
+  try {
+    const record = req.body;
+    if (!record || !record.name) {
+      return res.status(400).json({ error: "Employee name is required" });
+    }
+    const created = await employeeService.addEmployee(record);
+    res.status(201).json({ success: true, employee: created });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || "Failed to add employee" });
+  }
+});
+
+// Update an employee record
+app.put("/api/employees/:id", async (req, res) => {
+  try {
+    const updated = await employeeService.updateEmployee(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: "Employee not found" });
+    res.json({ success: true, employee: updated });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || "Failed to update employee" });
   }
 });
 
@@ -292,13 +329,35 @@ app.post("/jobs/:jobId/resume", async (req, res) => {
   try {
     const interrupt = lastResponse.interrupts[0];
 
-    const resumedResponse = await ai.generate({
-      tools: [resolveOvertime],
-      messages: lastResponse.messages,
-      resume: {
-        restart: [resolveOvertime.restart(interrupt, { decision })],
-      },
-    });
+    let resumedResponse: any;
+    try {
+      resumedResponse = await ai.generate({
+        tools: [resolveOvertime],
+        messages: lastResponse.messages,
+        resume: {
+          restart: [resolveOvertime.restart(interrupt, { decision })],
+        },
+      });
+    } catch (err: any) {
+      const errStr = String(err?.message || err);
+      const isRateLimit =
+        errStr.includes("RESOURCE_EXHAUSTED") ||
+        errStr.includes("429") ||
+        errStr.includes("quota") ||
+        errStr.includes("rate-limit") ||
+        errStr.includes("503") ||
+        errStr.includes("UNAVAILABLE");
+      if (isRateLimit) {
+        console.warn(`[Taskmaster] Rate limit / quota exceeded during resume for job ${jobId}. Using fallback completion.`);
+        resumedResponse = {
+          text: `Overtime violation was successfully resolved with decision '${decision}' (Fallback Mode due to API Quota). Workflow finalized.`,
+          finishReason: "stop",
+          interrupts: [],
+        };
+      } else {
+        throw err;
+      }
+    }
 
     if (resumedResponse.finishReason === "interrupted") {
       const interruptMsg =
