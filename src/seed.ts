@@ -1,6 +1,6 @@
 import "dotenv/config";
-import { employeesCol } from "../src/lib/firestore.js";
-import { policyIndex } from "../src/lib/meili.js";
+import { employeesCol } from "./lib/firestore.js";
+import { policyIndex } from "./lib/meili.js";
 
 async function seed() {
   await employeesCol.doc("emp_002").set({

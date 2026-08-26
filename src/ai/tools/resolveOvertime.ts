@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { ai } from "../genkit.js";
+import { employeesCol } from "../../lib/firestore.js";
 
 export const resolveOvertime = ai.defineTool(
   {
@@ -19,18 +20,24 @@ export const resolveOvertime = ai.defineTool(
   },
   async (input, { interrupt, resumed }) => {
     // If this is a restart after human decision, apply it.
-    if (resumed?.decision === "approved") {
-      // In a real system you would write to Firestore, send notifications, etc.
+    const resumedData = (typeof resumed === "object" && resumed !== null ? resumed : {}) as Record<string, any>;
+    if (resumedData.decision === "approved") {
+      await employeesCol.doc(input.employeeId).update({
+        overtimeApproved: true,
+      });
       return {
         committed: true,
-        auditLog: `Overtime for ${input.employeeId} (${input.overtimeHours}h) approved by human.`,
+        auditLog: `Overtime for ${input.employeeId} (${input.overtimeHours}h) approved by human supervisor.`,
       };
     }
 
-    if (resumed?.decision === "rejected") {
+    if (resumedData.decision === "rejected") {
+      await employeesCol.doc(input.employeeId).update({
+        overtimeApproved: false,
+      });
       return {
         committed: false,
-        auditLog: `Overtime for ${input.employeeId} rejected by human.`,
+        auditLog: `Overtime for ${input.employeeId} rejected by human supervisor.`,
       };
     }
 

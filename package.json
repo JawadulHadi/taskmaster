@@ -7,13 +7,15 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
+    "lint": "tsc --noEmit",
     "start": "node dist/server.js",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@genkit-ai/google-genai": "^1.41.0",
     "@google-cloud/firestore": "latest",
     "@google-cloud/pubsub": "latest",
+    "@google/genai": "^2.19.0",
     "dotenv": "^16",
     "express": "^4",
     "genkit": "latest",
