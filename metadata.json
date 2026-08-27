@@ -1,6 +1,6 @@
 {
   "name": "Taskmaster Agent",
-  "description": "All Things Agentic Hackathon submission (Track: Agentic Workflow Automation) — Event-driven HR operations agent for autonomous policy validation, employee timesheet auditing, and human-in-the-loop overtime approval workflows.",
+  "description": "All Things Agentic Hackathon submission (Track: Taskmaster) — Event-driven HR operations agent for autonomous policy validation, employee timesheet auditing, and human-in-the-loop overtime approval workflows.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

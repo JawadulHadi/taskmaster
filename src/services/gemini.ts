@@ -167,8 +167,13 @@ Return ONLY valid JSON adhering to this exact schema:
   "potentialViolations": string[]
 }`;
 
-  // Candidate models to try in order of resilience
-  const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash"];
+  // Candidate models to try in order of resilience. Hackathon rule requires
+  // Gemini 3.5+ — gemini-2.5-flash was previously in this list as a third
+  // fallback, which meant a full quota outage on both 3.6 and 3.5 would
+  // silently drop to a non-compliant model with no distinguishing log line.
+  // If both compliant models are unavailable, fail through to the
+  // heuristic parser below instead.
+  const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash"];
 
   for (const model of candidateModels) {
     try {

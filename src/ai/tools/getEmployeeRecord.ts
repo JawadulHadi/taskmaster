@@ -40,19 +40,11 @@ export const getEmployeeRecord = ai.defineTool(
       return matched;
     }
 
-    // 3. If employeeId is a job UUID or unknown, return the first active employee or safe placeholder
-    if (allEmployees.length > 0) {
-      return allEmployees[0];
-    }
-
-    return {
-      id: employeeId,
-      name: "Unknown Employee",
-      department: "General",
-      baseRate: 40.0,
-      regularHours: 40.0,
-      overtimeHours: 0.0,
-      overtimeApproved: false,
-    };
+    // No match — in an HR/payroll context, silently returning a different
+    // employee's real pay data is worse than an error the agent can react
+    // to (e.g. by asking the caller to confirm the ID). Previously this
+    // fell back to `allEmployees[0]`, which could hand the model someone
+    // else's timesheet under the wrong name.
+    throw new Error(`No employee found matching "${employeeId}"`);
   }
 );

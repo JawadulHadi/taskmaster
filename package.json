@@ -19,6 +19,7 @@
     "@google/genai": "^2.19.0",
     "dotenv": "^16",
     "express": "^4",
+    "google-auth-library": "^9",
     "genkit": "latest",
     "meilisearch": "latest",
     "zod": "^3"

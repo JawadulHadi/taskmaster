@@ -17,7 +17,7 @@ The Taskmaster Agent is a fully asynchronous, event‑driven system built on Goo
 
 ### XML Component Diagram
 
-```xml
+```XML
 <?xml version="1.0" encoding="UTF-8"?>
 <architecture sdk="Genkit ADK Agentic Loops v2.5">
   <component name="Client" type="external">
@@ -49,10 +49,11 @@ The Taskmaster Agent is a fully asynchronous, event‑driven system built on Goo
   </component>
   
   <component name="MeiliSearch" type="search-engine">
-    <connection to="Firestore" type="read" label="policy index &amp; audit history"/>
+    <connection to="Firestore" type="read" label="policy index & audit history"/>
   </component>
   
   <component name="Human Console" type="ui-or-api">
     <connection to="Cloud Run Worker" type="HTTP POST" label="/jobs/:jobId/resume"/>
   </component>
 </architecture>
+```

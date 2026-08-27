@@ -1,4 +1,4 @@
-import { PubSub, Message } from "@google-cloud/pubsub";
+import { PubSub } from "@google-cloud/pubsub";
 
 export const PUBSUB_TOPIC = process.env.PUBSUB_TOPIC || "taskmaster-jobs";
 
@@ -23,18 +23,18 @@ export function getPubSubClient(): PubSub | null {
   return pubsubClient;
 }
 
-type MessageHandler = (payload: any, ack?: () => void) => Promise<void>;
 type JobSubscriber = (jobId: string, tenantId: string) => Promise<void>;
 
-const localMessageHandlers: MessageHandler[] = [];
+// Single dispatch path — previously this file also fanned messages out to
+// a second, independent "topic handler" list that fed the now-deleted
+// AgenticWorkflowEngine, so every local-mode job ran through two pipelines
+// concurrently. Only `registerLocalWorker` remains; in production, Cloud
+// Run's Pub/Sub push subscription is the equivalent single path via
+// POST /tasks/run. See ADR-01.
 const localSubscribers: JobSubscriber[] = [];
 
 export function registerLocalWorker(fn: JobSubscriber) {
   localSubscribers.push(fn);
-}
-
-export function registerTopicHandler(fn: MessageHandler) {
-  localMessageHandlers.push(fn);
 }
 
 function handlePubSubError(err: any) {
@@ -48,82 +48,38 @@ function handlePubSubError(err: any) {
 }
 
 /**
- * Publishes a generic JSON message payload to the configured Pub/Sub topic.
+ * Publishes a job dispatch payload. In production this goes to Cloud
+ * Pub/Sub, which pushes to POST /tasks/run. In local/mock mode, it
+ * dispatches directly to the single registered local worker.
  */
-export async function publishMessage(payload: Record<string, any>, topicName = PUBSUB_TOPIC) {
+export async function publishJob(jobId: string, tenantId: string) {
+  const payload = { jobId, tenantId };
+
   if (useRealPubSub && pubsubClient) {
     try {
-      await pubsubClient.topic(topicName).publishMessage({ json: payload });
+      await pubsubClient.topic(PUBSUB_TOPIC).publishMessage({ json: payload });
       return;
     } catch (err) {
       handlePubSubError(err);
     }
   }
 
-  // Local asynchronous queue dispatch
+  // Local dispatch — single path, no fan-out.
   setTimeout(async () => {
-    // Dispatch to topic handlers
-    for (const handler of localMessageHandlers) {
+    for (const sub of localSubscribers) {
       try {
-        await handler(payload, () => {});
+        await sub(jobId, tenantId);
       } catch (err) {
-        console.error(`[Taskmaster] Local message handler error:`, err);
-      }
-    }
-
-    // Also dispatch to legacy job subscribers if jobId is present
-    if (payload.jobId) {
-      for (const sub of localSubscribers) {
-        try {
-          await sub(payload.jobId, payload.tenantId || "tenant_01");
-        } catch (err) {
-          console.error(`[Taskmaster] Local worker error for job ${payload.jobId}:`, err);
-        }
+        console.error(`[Taskmaster] Local worker error for job ${jobId}:`, err);
       }
     }
   }, 50);
 }
 
-/**
- * Publishes a job dispatch payload to PubSub.
- */
-export async function publishJob(jobId: string, tenantId: string) {
-  return publishMessage({ jobId, tenantId }, PUBSUB_TOPIC);
-}
-
-/**
- * Subscribes to the configured topic via Cloud Pub/Sub subscription or local event bus.
- */
-export function subscribeToTopic(
-  topicName = PUBSUB_TOPIC,
-  subscriptionName = `${PUBSUB_TOPIC}-sub`,
-  onMessage: MessageHandler,
-) {
-  // Always register for local event dispatch
-  registerTopicHandler(onMessage);
-
-  // If real GCP Pub/Sub is active, attach listener
-  if (useRealPubSub && pubsubClient) {
-    try {
-      const subscription = pubsubClient.subscription(subscriptionName);
-      subscription.on("message", async (message: Message) => {
-        try {
-          const rawString = message.data.toString("utf-8");
-          let payload: any;
-          try {
-            payload = JSON.parse(rawString);
-          } catch {
-            payload = { rawText: rawString };
-          }
-          await onMessage(payload, () => message.ack());
-        } catch (err) {
-          console.error(`[PubSub] Error processing subscription message:`, err);
-          message.nack();
-        }
-      });
-      console.log(`[Taskmaster] Subscribed to PubSub subscription '${subscriptionName}' on topic '${topicName}'`);
-    } catch (err) {
-      handlePubSubError(err);
-    }
-  }
+/** Alias kept for the `/api/tasks/validate` route's existing call shape. */
+export async function publishMessage(payload: Record<string, any>, _topicName = PUBSUB_TOPIC) {
+  const jobId = payload.jobId || payload.taskId;
+  const tenantId = payload.tenantId || "tenant_01";
+  if (!jobId) throw new Error("publishMessage requires a jobId/taskId");
+  return publishJob(jobId, tenantId);
 }

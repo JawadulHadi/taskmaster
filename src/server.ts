@@ -9,15 +9,25 @@ import {
   getAllJobs,
   getAllEmployees,
 } from "./lib/firestore.js";
-import { publishJob, publishMessage, registerLocalWorker, PUBSUB_TOPIC } from "./lib/pubsub.js";
+import {
+  publishJob,
+  publishMessage,
+  registerLocalWorker,
+  PUBSUB_TOPIC,
+} from "./lib/pubsub.js";
 import { policyIndex } from "./lib/meili.js";
 import { taskmasterFlow } from "./ai/flows/taskmasterFlow.js";
 import { resolveOvertime } from "./ai/tools/resolveOvertime.js";
 import { ai } from "./ai/genkit.js";
 import { processUnstructuredTimesheet } from "./services/gemini.js";
-import { searchAuditHistory, getAuditHistory } from "./services/meili.js";
+import {
+  searchAuditHistory,
+  getAuditHistory,
+  indexValidatedTask,
+} from "./services/meili.js";
 import { validateTaskPolicies } from "./utils/validator.js";
-import { tasksStore, notificationsStore, handleTimesheetMessage } from "./index.js";
+import { notificationsStore, pushHumanReviewNotification } from "./index.js";
+import { OAuth2Client } from "google-auth-library";
 import { Task } from "./models/task.js";
 import { employeeService } from "./services/employeeService.js";
 
@@ -27,7 +37,10 @@ app.use(express.json());
 // Enable CORS for cross-origin preview / iframe support
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS",
+  );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -59,17 +72,72 @@ async function executeWorkerTask(jobId: string, tenantId: string) {
         lastResponse: response,
         message: interruptMsg,
       });
-      console.log(`[Taskmaster] Job ${jobId} paused for human review:`, interruptMsg);
+      pushHumanReviewNotification({ taskId: jobId, message: interruptMsg });
+      console.log(
+        `[Taskmaster] Job ${jobId} paused for human review:`,
+        interruptMsg,
+      );
+      await indexJobForAudit(
+        jobId,
+        tenantId,
+        "needs_review",
+        job?.command || "",
+        interruptMsg,
+      );
     } else {
-      await updateJobStatus(jobId, "completed", {
-        result: response.text || "Job completed successfully.",
-      });
+      const resultText = response.text || "Job completed successfully.";
+      await updateJobStatus(jobId, "completed", { result: resultText });
       console.log(`[Taskmaster] Job ${jobId} completed successfully.`);
+      await indexJobForAudit(
+        jobId,
+        tenantId,
+        "completed",
+        job?.command || "",
+        resultText,
+      );
     }
   } catch (err: any) {
     const errMsg = err?.message || String(err);
     console.error(`[Taskmaster] Error processing job ${jobId}:`, errMsg);
     await updateJobStatus(jobId, "error", { message: errMsg });
+    await indexJobForAudit(jobId, tenantId, "failed", "", errMsg);
+  }
+}
+
+// Writes a minimal audit-trail entry into the Meilisearch audit index so
+// GET /api/audit/search and /api/audit/history stay populated. This step
+// used to happen inside the deleted AgenticWorkflowEngine (see index.ts);
+// it's called directly here now that there's a single execution path.
+async function indexJobForAudit(
+  jobId: string,
+  tenantId: string,
+  status: "completed" | "needs_review" | "failed",
+  command: string,
+  summary: string,
+) {
+  try {
+    await indexValidatedTask({
+      id: jobId,
+      jobId,
+      tenantId,
+      type: "general_task",
+      status,
+      command,
+      auditLogs: [
+        {
+          timestamp: new Date().toISOString(),
+          stage: "completion",
+          actor: "system",
+          message: summary,
+        },
+      ],
+      createdAt: new Date().toISOString(),
+    } as any);
+  } catch (err: any) {
+    console.warn(
+      `[Taskmaster] Audit indexing skipped for job ${jobId}:`,
+      err?.message,
+    );
   }
 }
 
@@ -150,11 +218,16 @@ app.post("/api/employees", async (req, res) => {
 // Update an employee record
 app.put("/api/employees/:id", async (req, res) => {
   try {
-    const updated = await employeeService.updateEmployee(req.params.id, req.body);
+    const updated = await employeeService.updateEmployee(
+      req.params.id,
+      req.body,
+    );
     if (!updated) return res.status(404).json({ error: "Employee not found" });
     res.json({ success: true, employee: updated });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || "Failed to update employee" });
+    res
+      .status(500)
+      .json({ error: err?.message || "Failed to update employee" });
   }
 });
 
@@ -191,12 +264,17 @@ app.post("/api/timesheets/process", async (req, res) => {
   }
 });
 
-// List all standardized tasks
+// List all tasks — alias for /api/jobs. `tasksStore` (in-memory) was only
+// ever populated by the deleted AgenticWorkflowEngine and would silently
+// return [] forever post-removal; Firestore via getAllJobs() is the real
+// source of truth for job/task state now that there's a single pipeline.
 app.get("/api/tasks", async (req, res) => {
-  const tasks = Array.from(tasksStore.values()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-  );
-  res.json({ tasks });
+  try {
+    const jobs = await getAllJobs();
+    res.json({ tasks: jobs });
+  } catch (err: any) {
+    res.json({ tasks: [] });
+  }
 });
 
 // Submit a timesheet validation task via Pub/Sub
@@ -210,7 +288,9 @@ app.post("/api/tasks/validate", async (req, res) => {
 
   const textToProcess = rawTimesheetText || command;
   if (!textToProcess) {
-    return res.status(400).json({ error: "rawTimesheetText or command is required" });
+    return res
+      .status(400)
+      .json({ error: "rawTimesheetText or command is required" });
   }
 
   const taskId = randomUUID();
@@ -253,7 +333,9 @@ app.get("/api/audit/search", async (req, res) => {
   const q = String(req.query.q || req.query.query || "");
   const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 20;
   const status = req.query.status ? String(req.query.status) : undefined;
-  const employeeId = req.query.employeeId ? String(req.query.employeeId) : undefined;
+  const employeeId = req.query.employeeId
+    ? String(req.query.employeeId)
+    : undefined;
 
   const results = await searchAuditHistory(q, { limit, status, employeeId });
   res.json(results);
@@ -272,7 +354,9 @@ app.post("/api/validator/validate", async (req, res) => {
   try {
     const target = task || timesheet;
     if (!target) {
-      return res.status(400).json({ error: "task or timesheet payload is required" });
+      return res
+        .status(400)
+        .json({ error: "task or timesheet payload is required" });
     }
     const result = await validateTaskPolicies(target, employeeRecord);
     res.json(result);
@@ -294,7 +378,41 @@ app.post("/jobs", async (req, res) => {
 });
 
 // ── Worker (Pub/Sub Push Endpoint) ──
+const oidcClient = new OAuth2Client();
+const PUBSUB_PUSH_AUDIENCE = process.env.PUBSUB_PUSH_AUDIENCE; // full HTTPS URL of this /tasks/run endpoint
+
+async function verifyPubSubPush(req: express.Request): Promise<boolean> {
+  // Was a TODO in the original scaffold — now enforced. Cloud Run's Pub/Sub
+  // push subscription signs every request with a service-account OIDC token
+  // in the Authorization header; without checking it, anyone who learns the
+  // URL can POST a forged envelope and trigger job execution.
+  if (!PUBSUB_PUSH_AUDIENCE) {
+    // Not configured (e.g. local dev without a real push subscription) —
+    // fail open with a loud warning rather than blocking local testing.
+    console.warn(
+      "[Taskmaster] PUBSUB_PUSH_AUDIENCE not set — /tasks/run auth check skipped (local/dev only).",
+    );
+    return true;
+  }
+  const authHeader = req.get("authorization") || "";
+  const token = authHeader.match(/^Bearer (.+)$/)?.[1];
+  if (!token) return false;
+  try {
+    const ticket = await oidcClient.verifyIdToken({
+      idToken: token,
+      audience: PUBSUB_PUSH_AUDIENCE,
+    });
+    return !!ticket.getPayload();
+  } catch {
+    return false;
+  }
+}
+
 app.post("/tasks/run", async (req, res) => {
+  if (!(await verifyPubSubPush(req))) {
+    return res.status(401).send("invalid or missing Pub/Sub push token");
+  }
+
   const envelope = req.body?.message;
   if (!envelope?.data) return res.status(400).send("bad Pub/Sub envelope");
 
@@ -318,7 +436,9 @@ app.post("/jobs/:jobId/resume", async (req, res) => {
   const { decision } = req.body; // expect { decision: "approved" | "rejected" }
 
   if (!decision || (decision !== "approved" && decision !== "rejected")) {
-    return res.status(400).json({ error: "decision must be 'approved' or 'rejected'" });
+    return res
+      .status(400)
+      .json({ error: "decision must be 'approved' or 'rejected'" });
   }
 
   const job = await getJob(jobId);
@@ -355,7 +475,9 @@ app.post("/jobs/:jobId/resume", async (req, res) => {
         errStr.includes("503") ||
         errStr.includes("UNAVAILABLE");
       if (isRateLimit) {
-        console.warn(`[Taskmaster] Rate limit / quota exceeded during resume for job ${jobId}. Using fallback completion.`);
+        console.warn(
+          `[Taskmaster] Rate limit / quota exceeded during resume for job ${jobId}. Using fallback completion.`,
+        );
         resumedResponse = {
           text: `Overtime violation was successfully resolved with decision '${decision}' (Fallback Mode due to API Quota). Workflow finalized.`,
           finishReason: "stop",
@@ -381,7 +503,9 @@ app.post("/jobs/:jobId/resume", async (req, res) => {
       });
     }
 
-    const finalResult = resumedResponse.text || `Overtime violation was marked as ${decision}. Workflow finalized.`;
+    const finalResult =
+      resumedResponse.text ||
+      `Overtime violation was marked as ${decision}. Workflow finalized.`;
     await updateJobStatus(jobId, "completed", {
       result: finalResult,
     });
@@ -521,10 +645,10 @@ app.get("/branding", (req, res) => {
         </h3>
         <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-8">
           <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-indigo-300 flex items-center gap-2">
-            <span>✨</span> Google Genkit ADK
+            <span>✨</span> Google Genkit
           </div>
           <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-purple-300 flex items-center gap-2">
-            <span>🧠</span> Gemini 1.5 Flash / Pro
+            <span>🧠</span> Gemini 3.6 Flash
           </div>
           <div class="px-4 py-2.5 rounded-xl bg-slate-900/80 border border-slate-800 text-xs font-mono text-pink-300 flex items-center gap-2">
             <span>🔥</span> Cloud Firestore DB
@@ -731,7 +855,7 @@ app.get("/", (req, res) => {
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base font-bold text-white tracking-tight">Taskmaster Agent</h1>
-            <span class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">Genkit ADK SDK v2.5</span>
+            <span class="px-2 py-0.5 text-[10px] font-mono font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full">Genkit</span>
           </div>
           <p class="text-xs text-slate-400">Autonomous HR Compliance &amp; Event-Driven Loop Engine</p>
         </div>
@@ -1094,6 +1218,6 @@ app.get("/", (req, res) => {
 });
 
 const port = Number(process.env.PORT) || 3000;
-app.listen(port, "0.0.0.0", () => {
-  console.log(`taskmaster-agent server running on http://0.0.0.0:${port}`);
+app.listen(port, "localhost", () => {
+  console.log(`taskmaster-agent server running on http://localhost:${port}`);
 });

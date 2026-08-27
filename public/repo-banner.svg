@@ -1,99 +1,98 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400" width="100%" height="100%">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#030712" />
-      <stop offset="50%" stop-color="#0f172a" />
-      <stop offset="100%" stop-color="#1e1b4b" />
+      <stop offset="0%" stop-color="#030712"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e1b4b"/>
     </linearGradient>
     <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="50%" stop-color="#a855f7" />
-      <stop offset="100%" stop-color="#ec4899" />
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
     </linearGradient>
     <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
       <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.6"/>
     </filter>
   </defs>
-
   <!-- Background -->
-  <rect width="1200" height="400" fill="url(#bgGrad)" />
-
-  <!-- Background Circuit Grid -->
-  <g opacity="0.15">
-    <path d="M0 100 H1200 M0 200 H1200 M0 300 H1200 M300 0 V400 M600 0 V400 M900 0 V400" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4" />
-    <circle cx="300" cy="200" r="40" fill="none" stroke="#ec4899" stroke-width="1.5" />
-    <circle cx="900" cy="200" r="60" fill="none" stroke="#6366f1" stroke-width="1.5" />
-  </g>
-
-  <!-- Floating Holographic Badge -->
-  <rect x="80" y="55" width="280" height="34" rx="17" fill="#6366f1" fill-opacity="0.15" stroke="#818cf8" stroke-width="1" />
-  <circle cx="102" cy="72" r="5" fill="#34d399">
-    <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
-  </circle>
-  <text x="118" y="77" fill="#c7d2fe" font-family="system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="0.5">GENKIT &amp; ADK AGENTIC LOOPS SDK</text>
-
-  <!-- Main Title -->
-  <text x="80" y="150" fill="#ffffff" font-family="system-ui, sans-serif" font-size="46" font-weight="800" letter-spacing="-1">
-    Taskmaster <tspan fill="url(#accentGrad)">Agentic Engine</tspan>
-  </text>
-
-  <!-- Subtitle -->
-  <text x="80" y="195" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="18" font-weight="400">
-    Autonomous HR Compliance, Pub/Sub Asynchronous Queues &amp; HITL Interrupts
-  </text>
-
-  <!-- Architecture Flow Nodes Card -->
-  <g transform="translate(80, 230)" filter="url(#shadow)">
-    <!-- Card Background -->
-    <rect width="720" height="115" rx="14" fill="#090d16" stroke="#334155" stroke-width="1" />
-
-    <!-- Step 1: Client / PubSub -->
-    <g transform="translate(25, 25)">
-      <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
-      <text x="15" y="27" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="700">01. DISPATCH</text>
-      <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Firestore &amp; Pub/Sub</text>
-    </g>
-
-    <!-- Arrow 1 -->
-    <path d="M165 57 H195" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)" />
-    <polygon points="193,53 201,57 193,61" fill="#6366f1"/>
-
-    <!-- Step 2: Genkit AI Loop -->
-    <g transform="translate(205, 25)">
-      <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
-      <text x="15" y="27" fill="#a78bfa" font-family="monospace" font-size="11" font-weight="700">02. GENKIT AI</text>
-      <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Gemini 3.5 Flash</text>
-    </g>
-
-    <!-- Arrow 2 -->
-    <path d="M345 57 H375" stroke="#6366f1" stroke-width="2" />
-    <polygon points="373,53 381,57 373,61" fill="#6366f1"/>
-
-    <!-- Step 3: HITL Interrupt -->
-    <g transform="translate(385, 25)">
-      <rect width="130" height="65" rx="8" fill="#2e1065" stroke="#c084fc" stroke-width="1.5"/>
-      <text x="15" y="27" fill="#f472b6" font-family="monospace" font-size="11" font-weight="700">03. HITL LOOP</text>
-      <text x="15" y="47" fill="#fbcfe8" font-family="system-ui" font-size="12" font-weight="500">Manager Approval</text>
-    </g>
-
-    <!-- Arrow 3 -->
-    <path d="M525 57 H555" stroke="#6366f1" stroke-width="2" />
-    <polygon points="553,53 561,57 553,61" fill="#6366f1"/>
-
-    <!-- Step 4: Meilisearch Indexing -->
-    <g transform="translate(565, 25)">
-      <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1"/>
-      <text x="15" y="27" fill="#34d399" font-family="monospace" font-size="11" font-weight="700">04. AUDIT DB</text>
-      <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Meilisearch Index</text>
-    </g>
-  </g>
-
-  <!-- Right side decorative glowing badge -->
-  <g transform="translate(940, 80)" filter="url(#shadow)">
-    <circle cx="100" cy="120" r="90" fill="url(#accentGrad)" opacity="0.2" filter="blur(20px)" />
-    <circle cx="100" cy="120" r="65" fill="#0b0f19" stroke="url(#accentGrad)" stroke-width="3" />
-    <text x="100" y="110" fill="#ffffff" font-family="system-ui, sans-serif" font-size="16" font-weight="800" text-anchor="middle">GENKIT ADK</text>
-    <text x="100" y="132" fill="#a5b4fc" font-family="monospace" font-size="12" font-weight="600" text-anchor="middle">v2.5 SDK</text>
-    <path d="M70 150 Q100 170 130 150" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" />
-  </g>
-</svg>
+    <rect width="1200" height="400" fill="#000000"/>
+    <!-- Background Circuit Grid -->
+      <g opacity="0.15">
+        <path d="M0 100 H1200 M0 200 H1200 M0 300 H1200 M300 0 V400 M600 0 V400 M900 0 V400" stroke="#6366f1" stroke-width="1" stroke-dasharray="4 4"/>
+        <circle cx="300" cy="200" r="40" fill="none" stroke="#ec4899" stroke-width="1.5"/>
+        <circle cx="900" cy="200" r="60" fill="none" stroke="#6366f1" stroke-width="1.5"/>
+      </g>
+      <!-- Floating Holographic Badge -->
+        <rect x="80" y="55" width="280" height="34" rx="17" fill="#409eff" fill-opacity="0.15" stroke="#818cf8" stroke-width="1"/>
+        <circle cx="102" cy="72" r="5" fill="#34d399">
+          <animate attributeName="opacity" values="0.3;1;0.3" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <text x="118" y="77" fill="#c7d2fe" font-family="system-ui, sans-serif" font-size="13" font-weight="600" letter-spacing="0.5">GENKIT &amp; ADK AGENTIC LOOPS SDK
+        </text>
+        <!-- Main Title -->
+          <text x="80" y="150" fill="#ffffff" font-family="system-ui, sans-serif" font-size="46" font-weight="800" letter-spacing="-1">
+            Taskmaster
+            <tspan fill="url(#accentGrad)">Agentic Engine
+            </tspan>
+          </text>
+          <!-- Subtitle -->
+            <text x="80" y="195" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="18" font-weight="400">
+              Autonomous HR Compliance, Pub/Sub Asynchronous Queues &amp; HITL Interrupts
+            </text>
+            <!-- Architecture Flow Nodes Card -->
+              <g transform="translate(80, 230)" filter="url(#shadow)">
+                <!-- Card Background -->
+                  <rect width="720" height="115" rx="14" fill="#090d16" stroke="#334155" stroke-width="1"/>
+                  <!-- Step 1: Client / PubSub -->
+                    <g transform="translate(25, 25)">
+                      <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+                      <text x="15" y="27" fill="#38bdf8" font-family="monospace" font-size="11" font-weight="700">01. DISPATCH
+                      </text>
+                      <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Firestore &amp; Pub/Sub
+                      </text>
+                    </g>
+                    <!-- Arrow 1 -->
+                      <path d="M165 57 H195" stroke="#6366f1" stroke-width="2" marker-end="url(#arrow)"/>
+                      <polygon points="193,53 201,57 193,61" fill="#6366f1"/>
+                      <!-- Step 2: Genkit AI Loop -->
+                        <g transform="translate(205, 25)">
+                          <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
+                          <text x="15" y="27" fill="#a78bfa" font-family="monospace" font-size="11" font-weight="700">02. GENKIT AI
+                          </text>
+                          <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Gemini 3.5 Flash
+                          </text>
+                        </g>
+                        <!-- Arrow 2 -->
+                          <path d="M345 57 H375" stroke="#6366f1" stroke-width="2"/>
+                          <polygon points="373,53 381,57 373,61" fill="#6366f1"/>
+                          <!-- Step 3: HITL Interrupt -->
+                            <g transform="translate(385, 25)">
+                              <rect width="130" height="65" rx="8" fill="#2e1065" stroke="#c084fc" stroke-width="1.5"/>
+                              <text x="15" y="27" fill="#f472b6" font-family="monospace" font-size="11" font-weight="700">03. HITL LOOP
+                              </text>
+                              <text x="15" y="47" fill="#fbcfe8" font-family="system-ui" font-size="12" font-weight="500">Manager Approval
+                              </text>
+                            </g>
+                            <!-- Arrow 3 -->
+                              <path d="M525 57 H555" stroke="#6366f1" stroke-width="2"/>
+                              <polygon points="553,53 561,57 553,61" fill="#6366f1"/>
+                              <!-- Step 4: Meilisearch Indexing -->
+                                <g transform="translate(565, 25)">
+                                  <rect width="130" height="65" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1"/>
+                                  <text x="15" y="27" fill="#34d399" font-family="monospace" font-size="11" font-weight="700">04. AUDIT DB
+                                  </text>
+                                  <text x="15" y="47" fill="#e2e8f0" font-family="system-ui" font-size="12" font-weight="500">Meilisearch Index
+                                  </text>
+                                </g>
+                              </g>
+                              <!-- Right side decorative glowing badge -->
+                                <g transform="translate(940, 80)" filter="url(#shadow)">
+                                  <circle cx="100" cy="120" r="90" fill="url(#accentGrad)" opacity="0.2" filter="blur(20px)"/>
+                                  <circle cx="100" cy="120" r="65" fill="#0b0f19" stroke="url(#accentGrad)" stroke-width="3"/>
+                                  <text x="100" y="110" fill="#ffffff" font-family="system-ui, sans-serif" font-size="16" font-weight="800" text-anchor="middle">GENKIT ADK
+                                  </text>
+                                  <text x="100" y="132" fill="#a5b4fc" font-family="monospace" font-size="12" font-weight="600" text-anchor="middle">v2.5 SDK
+                                  </text>
+                                  <path d="M70 150 Q100 170 130 150" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round"/>
+                                </g>
+                              </svg>
