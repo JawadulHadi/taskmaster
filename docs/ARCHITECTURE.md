@@ -46,7 +46,7 @@ The Taskmaster Agent is a fully asynchronous, event‑driven system built on Goo
   </component>
 
   <component name="MeiliSearch" type="search-engine">
-    <connection to="Firestore" type="read" label="policy index &amp; audit history"/>
+    <connection to="Firestore" type="read" label="policy index & audit history"/>
   </component>
 
   <component name="Human Console" type="ui-or-api">
