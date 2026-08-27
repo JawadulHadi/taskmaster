@@ -19,39 +19,36 @@ The Taskmaster Agent is a fully asynchronous, event‑driven system built on Goo
 
 ```XML
 <?xml version="1.0" encoding="UTF-8"?>
-<architecture sdk="Genkit ADK Agentic Loops v2.5">
+<architecture sdk="Google Genkit">
   <component name="Client" type="external">
     <connection to="Dispatcher" protocol="HTTP POST /jobs"/>
   </component>
-  
+
   <component name="Dispatcher" type="express-route">
     <connection to="Firestore" type="write" label="create job (status=queued)"/>
     <connection to="PubSub" type="publish" label="jobId, tenantId"/>
   </component>
-  
+
   <component name="PubSub" type="message-queue">
-    <connection to="Cloud Run Worker" type="push" label="HTTP POST /tasks/run"/>
+    <connection to="Cloud Run Worker" type="push" label="HTTP POST /tasks/run (OIDC-verified)"/>
   </component>
-  
+
   <component name="Cloud Run Worker" type="express-route">
-    <connection to="Genkit Agent" type="invoke" label="taskmasterFlow (Gemini 3.5 Flash)"/>
+    <connection to="Genkit Agent" type="invoke" label="taskmasterFlow (Gemini 3.6 Flash)"/>
     <connection to="Firestore" type="update" label="status=running / needs_review / completed"/>
+    <connection to="MeiliSearch" type="audit-index" label="indexJobForAudit (post-completion)"/>
   </component>
-  
+
   <component name="Genkit Agent" type="ai-flow">
     <connection to="MeiliSearch" type="tool-call" label="searchPolicies"/>
     <connection to="Firestore" type="tool-call" label="getEmployeeRecord"/>
     <connection to="Human Console" type="interrupt" label="resolveOvertime (HITL)"/>
   </component>
 
-  <component name="EventDrivenEngine" type="EventEmitter">
-    <connection to="MeiliSearch" type="audit-index" label="indexValidatedTask"/>
-  </component>
-  
   <component name="MeiliSearch" type="search-engine">
-    <connection to="Firestore" type="read" label="policy index & audit history"/>
+    <connection to="Firestore" type="read" label="policy index &amp; audit history"/>
   </component>
-  
+
   <component name="Human Console" type="ui-or-api">
     <connection to="Cloud Run Worker" type="HTTP POST" label="/jobs/:jobId/resume"/>
   </component>
