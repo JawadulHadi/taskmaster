@@ -22,7 +22,7 @@
     "google-auth-library": "^9",
     "genkit": "latest",
     "meilisearch": "latest",
-    "zod": "^3"
+    "zod": "^4"
   },
   "devDependencies": {
     "@types/express": "^4",
